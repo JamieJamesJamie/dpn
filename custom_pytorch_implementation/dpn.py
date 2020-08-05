@@ -29,6 +29,15 @@ class DPNLightning(pl.LightningModule):
 
         self._replay_buffer = ReplayBuffer(self.hparams.batch_size)
 
+        # TODO: Determine usefulness of conv_params
+        # Default hyperparameters for the convolutional neural network
+        conv_params = [
+            (64, 5, 2, "SAME"),
+            (64, 5, 2, "SAME"),
+            (64, 5, 1, "SAME"),
+            (64, 5, 1, "SAME"),
+        ]
+
     def forward(self, *args, **kwargs):
         # TODO: Implement PL forward() method
         pass
