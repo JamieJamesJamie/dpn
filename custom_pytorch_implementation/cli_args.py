@@ -1,11 +1,44 @@
+"""
+This module contains all the command line arguments used in the program.
+"""
+
 import argparse
+
+import pytorch_lightning as pl
+
+
+def _add_pl_trainer_args():
+    """
+    Adds command line arguments specific to Pytorch Lightning to a parser. The parser
+    is then returned.
+
+    :return: Parser
+    """
+
+    # noinspection PyTypeChecker
+    trainer_parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=False
+    )
+
+    trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
+    return trainer_parser
 
 
 def parse_args():
+    """
+    Adds command line arguments to a parser and returns the parsed command line
+    arguments.
+
+    :return: Parsed command line arguments
+    """
+
+    trainer_parser = _add_pl_trainer_args()
+
     # noinspection PyTypeChecker
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        parents=[trainer_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+
     parser.add_argument(
         "--inner-horizon", type=int, default=5, help="length of RNN rollout horizon"
     )
