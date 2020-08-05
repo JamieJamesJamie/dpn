@@ -1,6 +1,7 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 import tensorflow.contrib.layers as layers
+
 from models.tf_utils import log_normal, log_bernoulli
 
 tfd = tf.contrib.distributions
