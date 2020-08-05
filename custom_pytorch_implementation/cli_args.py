@@ -3,6 +3,7 @@ This module contains all the command line arguments used in the program.
 """
 
 import argparse
+from pathlib import Path
 
 import pytorch_lightning as pl
 
@@ -22,6 +23,22 @@ def _add_pl_trainer_args():
 
     trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
     return trainer_parser
+
+
+def _add_custom_args(parser):
+
+    parser.add_argument(
+        "--seed", type=int, default=0, help="Random seed for reproducibility"
+    )
+
+    parser.add_argument(
+        "--logdir",
+        type=lambda path: str(Path(path)),
+        default=str(Path("lightning_logs")),
+        help="Path to store logs",
+    )
+
+    return parser
 
 
 def parse_args():
@@ -103,12 +120,12 @@ def parse_args():
         default="log",
         help="name of log file to dump test data stats",
     )
-    parser.add_argument(
-        "--log-directory",
-        type=str,
-        default="/scr/kevin/unsupervised_upn/",
-        help="name of log directory to dump checkpoints",
-    )
+    # parser.add_argument(
+    #     "--log-directory",
+    #     type=str,
+    #     default="/scr/kevin/unsupervised_upn/",
+    #     help="name of log directory to dump checkpoints",
+    # )
     parser.add_argument(
         "--huber",
         dest="huber_loss",
@@ -219,5 +236,8 @@ def parse_args():
         "--n-hidden-act", type=int, default=1, help="number of hidden layers for action"
     )
     parser.add_argument("--beta", type=float, default=1.0, help="beta for beta-vae")
+
+    parser = _add_custom_args(parser)
+
     args = parser.parse_args()
     return args
