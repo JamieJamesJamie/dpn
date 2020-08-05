@@ -26,7 +26,6 @@ def _add_pl_trainer_args():
 
 
 def _add_custom_args(parser):
-
     parser.add_argument(
         "--seed", type=int, default=0, help="Random seed for reproducibility"
     )
@@ -34,8 +33,27 @@ def _add_custom_args(parser):
     parser.add_argument(
         "--logdir",
         type=lambda path: str(Path(path)),
-        default=str(Path("lightning_logs")),
+        default=str(Path("dpn_lightning_logs")),
         help="Path to store logs",
+    )
+
+    parser.add_argument(
+        "--test", action="store_true", help="restore the model for testing"
+    )
+
+    parser.add_argument(
+        "--decay",
+        type=str,
+        default="",
+        help="decay the learning rate in the outer loop",
+    )
+
+    parser.add_argument(
+        "--learn-lr",
+        default="",
+        action="store_const",
+        const="learn_lr",
+        help="learn the " "il-lr",
     )
 
     return parser
@@ -189,22 +207,25 @@ def parse_args():
         default="swish",
         help="which nonlinearity for dynamics and fully connected",
     )
-    parser.add_argument(
-        "--decay",
-        type=str,
-        default="None",
-        help="decay the learning rate in the outer loop",
-    )
+    # parser.add_argument(
+    #     "--decay",
+    #     type=str,
+    #     default="None",
+    #     help="decay the learning rate in the outer loop",
+    # )
     parser.add_argument(
         "--niter-init",
         type=int,
         default=50000,
         help="number of iterations of running the initial learning rate",
     )
-    parser.add_argument("--learn-lr", type=str, default="False", help="learn the il-lr")
-    parser.add_argument(
-        "--test", type=str, default="False", help="restore the model for testing or not"
-    )
+    # parser.add_argument("--learn-lr", type=str, default="False", help="learn the
+    # il-lr")
+
+    # parser.add_argument(
+    #     "--test", type=str, default="False", help="restore the model for testing or
+    #     not"
+    # )
     parser.add_argument(
         "--dt",
         type=int,
