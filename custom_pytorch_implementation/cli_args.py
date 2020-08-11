@@ -2,263 +2,105 @@
 This module contains all the command line arguments used in the program.
 """
 
-import argparse
+from dataclasses import dataclass, field
 from pathlib import Path
 
-import pytorch_lightning as pl
 
-
-def _add_pl_trainer_args():
+@dataclass
+class Hparams:
     """
-    Adds command line arguments specific to Pytorch Lightning to a parser. The parser
-    is then returned.
-
-    :return: Parser
+    Hparams for DPN. Most of the fields in this dataclass are copied from the
+    original implementation.
     """
 
-    # noinspection PyTypeChecker
-    trainer_parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=False
-    )
+    # TODO: Fix Pylint's "too-many-instance-attributes" problem in Hparams dataclass
 
-    trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
-    return trainer_parser
+    inner_horizon: int = 5  # Length of RNN rollout horizon
+    outer_horizon: int = 5  # Length of BC loss horizon
+    sampling_max_horizon: int = 0  # Max length of BC loss horizon for sampling
+    num_plan_updates: int = 8  # Number of planning update steps before BC loss
+    n_hidden: int = 1  # Number of hidden layers to encode after conv
+    obs_latent_dim: int = 128  # Obs latent space dim
+    act_latent_dim: int = 128  # Act latent space dim
+
+    meta_gradient_clip_value: float = 25.0  # Meta gradient clip value
+
+    batch_size: int = 128  # Batch size
+    test_batch_size: int = 128  # Test batch size
+
+    il_lr_0: float = 0.5  # il_lr_0
+    il_lr: float = 0.25  # il_lr
+    ol_lr: float = 0.0035  # ol_lr
+
+    num_batch_updates: int = 100000  # Number of minibatch updates
+    testing_frequency: int = 500  # How frequently to get stats for test data
+
+    log_frequency: int = 1000  # How frequently to log the data
+    log_file: str = "log"  # Name of log file to dump test data stats
+    log_dir: Path = "dpn_lightning_logs"  # Path to store logs
+
+    huber_loss: bool = True  # Whether to use Huber loss
+    huber_delta: float = 1.0  # Delta coefficient in Huber loss
+
+    img_height: int = 84  # Image height
+    img_width: int = 84  # Image width
+    img_channels: int = 3  # Number of channels in input image
+
+    task: str = "kinova_reach"  # Which task to train on
+
+    act_scale_coeff: float = 1.0  # Scaling factor for actions
+
+    act_dim: int = 2  # Dimensionality of action space
+    joint_dim: int = 4  # Dimensionality of joint space
+
+    num_train: int = 5000  # Number of rollouts for training
+    num_test: int = 1000  # Number of rollouts for testing
+
+    spatial_softmax: bool = False  # Whether to use spatial softmax
+
+    bias_transform: bool = False  # Whether to use bias transform
+    bt_num_units: int = 10  # Number of dimensions in bias transform
+
+    nonlinearity: str = "swish"  # Which nonlinearity for dynamics and fully connected
+
+    decay: str = ""  # Decay the learning rate in the outer loop
+
+    n_iter_init: int = 50000  # No. of iterations of running the initial learning rate
+
+    learn_lr: bool = False  # Learn the il_lr
+
+    test: bool = False  # Restore the model for testing or not
+
+    d_t: int = 1  # No. of time steps between the initial image, and the goal image
+
+    restore_iter: int = -1  # Restore the checkpoint at which iteration
+
+    date: str = "False"  # Date of the checkpoint created
+    training_tf_record: Path = "None"  # Path to the tfrecord file for training
+    validation_tf_record: Path = "None"  # Path to the tfrecord file for validation
+
+    n_hidden_act: int = 1  # Number of hidden layers for action
+
+    beta: float = 1.0  # Beta for beta-vae
+
+    seed: int = 0  # Random seed for reproducibility
 
 
-def _add_custom_args(parser):
-    parser.add_argument(
-        "--seed", type=int, default=0, help="Random seed for reproducibility"
-    )
-
-    parser.add_argument(
-        "--logdir",
-        type=lambda path: str(Path(path)),
-        default=str(Path("dpn_lightning_logs")),
-        help="Path to store logs",
-    )
-
-    parser.add_argument(
-        "--test", action="store_true", help="restore the model for testing"
-    )
-
-    parser.add_argument(
-        "--decay",
-        type=str,
-        default="",
-        help="decay the learning rate in the outer loop",
-    )
-
-    parser.add_argument(
-        "--learn-lr",
-        default="",
-        action="store_const",
-        const="learn_lr",
-        help="learn the " "il-lr",
-    )
-
-    return parser
-
-
-def parse_args():
+@dataclass
+class DPNConfig:
     """
-    Adds command line arguments to a parser and returns the parsed command line
-    arguments.
+    Config for DPN that contains the available command line args.
 
-    :return: Parsed command line arguments
+    The pl_trainer field is a dictionary that can have command line args for the
+    Pytorch Lightning trainer added to it using e.g. `+pl_trainer.gpus=-1`.
+
+    The hparams field contains most of the command line args used in the original DPN
+    implementation, with some minor additions. Help text for each of these fields is
+    available as a comment in the :class:`Hparams` dataclass definition.
     """
 
-    trainer_parser = _add_pl_trainer_args()
+    # Pytorch Lightning args - refer to PL docs for specific args
+    pl_trainer: dict = field(default_factory=dict)
 
-    # noinspection PyTypeChecker
-    parser = argparse.ArgumentParser(
-        parents=[trainer_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument(
-        "--inner-horizon", type=int, default=5, help="length of RNN rollout horizon"
-    )
-    parser.add_argument(
-        "--outer-horizon", type=int, default=5, help="length of BC loss horizon"
-    )
-    parser.add_argument(
-        "--sampling-max-horizon",
-        type=int,
-        default=0,
-        help="max length of BC loss horizon for sampling",
-    )
-    parser.add_argument(
-        "--num-plan-updates",
-        type=int,
-        default=8,
-        help="number of planning update steps before BC loss",
-    )
-    parser.add_argument(
-        "--n-hidden",
-        type=int,
-        default=1,
-        help="number of hidden layers to encode after conv",
-    )
-    parser.add_argument(
-        "--obs-latent-dim", type=int, default=128, help="obs latent space dim"
-    )
-    parser.add_argument(
-        "--act-latent-dim", type=int, default=128, help="act latent space dim"
-    )
-    parser.add_argument(
-        "--meta-gradient-clip-value",
-        type=float,
-        default=25.0,
-        help="meta gradient clip value",
-    )
-    parser.add_argument("--batch-size", type=int, default=128, help="batch size")
-    parser.add_argument(
-        "--test-batch-size", type=int, default=128, help="test batch size"
-    )
-    parser.add_argument("--il-lr-0", type=float, default=0.5, help="il_lr_0")
-    parser.add_argument("--il-lr", type=float, default=0.25, help="il_lr")
-    parser.add_argument("--ol-lr", type=float, default=0.0035, help="ol_lr")
-    parser.add_argument(
-        "--num-batch-updates",
-        type=int,
-        default=100000,
-        help="number of minibatch updates",
-    )
-    parser.add_argument(
-        "--testing-frequency",
-        type=int,
-        default=500,
-        help="how frequently to get stats for test data",
-    )
-    parser.add_argument(
-        "--log-frequency", type=int, default=1000, help="how frequently to log the data"
-    )
-    parser.add_argument(
-        "--log-file",
-        type=str,
-        default="log",
-        help="name of log file to dump test data stats",
-    )
-    # parser.add_argument(
-    #     "--log-directory",
-    #     type=str,
-    #     default="/scr/kevin/unsupervised_upn/",
-    #     help="name of log directory to dump checkpoints",
-    # )
-    parser.add_argument(
-        "--huber",
-        dest="huber_loss",
-        action="store_true",
-        help="whether to use Huber Loss",
-    )
-    parser.add_argument(
-        "--no-huber",
-        dest="huber_loss",
-        action="store_false",
-        help="whether not to use Huber Loss",
-    )
-    parser.set_defaults(huber_loss=True)
-    parser.add_argument(
-        "--huber-delta", type=float, default=1.0, help="delta coefficient in Huber Loss"
-    )
-    parser.add_argument(
-        "--img-c", type=int, default=3, help="number of channels in input"
-    )
-    parser.add_argument(
-        "--task", type=str, default="pointmass", help="which task to train on"
-    )
-    parser.add_argument(
-        "--act-scale-coeff", type=float, default=1.0, help="scaling factor for actions"
-    )
-    parser.add_argument(
-        "--act-dim", type=int, default=2, help="dimensionality of action space"
-    )
-    parser.add_argument(
-        "--joint-dim", type=int, default=4, help="dimensionality of joint space"
-    )
-    parser.add_argument("--img-h", type=int, default=84, help="image height")
-    parser.add_argument("--img-w", type=int, default=84, help="image width")
-    parser.add_argument(
-        "--num-train", type=int, default=5000, help="number of rollouts for training"
-    )
-    parser.add_argument(
-        "--num-test", type=int, default=1000, help="number of rollouts for test"
-    )
-    parser.add_argument(
-        "--spatial-softmax",
-        dest="spatial_softmax",
-        action="store_true",
-        help="whether to use spatial softmax",
-    )
-    parser.add_argument(
-        "--bias-transform",
-        dest="bias_transform",
-        action="store_true",
-        help="whether to use bias transform",
-    )
-    parser.add_argument(
-        "--bt-num-units",
-        type=int,
-        default=10,
-        help="number of dimensions in bias transform",
-    )
-    parser.add_argument(
-        "--nonlinearity",
-        type=str,
-        default="swish",
-        help="which nonlinearity for dynamics and fully connected",
-    )
-    # parser.add_argument(
-    #     "--decay",
-    #     type=str,
-    #     default="None",
-    #     help="decay the learning rate in the outer loop",
-    # )
-    parser.add_argument(
-        "--niter-init",
-        type=int,
-        default=50000,
-        help="number of iterations of running the initial learning rate",
-    )
-    # parser.add_argument("--learn-lr", type=str, default="False", help="learn the
-    # il-lr")
-
-    # parser.add_argument(
-    #     "--test", type=str, default="False", help="restore the model for testing or
-    #     not"
-    # )
-    parser.add_argument(
-        "--dt",
-        type=int,
-        default=1,
-        help="number of time steps between the initial image and the final goal image",
-    )
-    parser.add_argument(
-        "--restore-iter",
-        type=int,
-        default=-1,
-        help="restore the checkpoint at which iteration",
-    )
-    parser.add_argument(
-        "--date", type=str, default="False", help="date of the checkpoint created"
-    )
-    parser.add_argument(
-        "--training-tfrecord",
-        type=str,
-        default="None",
-        help="path to the tfrecord file for training",
-    )
-    parser.add_argument(
-        "--validation-tfrecord",
-        type=str,
-        default="None",
-        help="path to the tfrecord file for validation",
-    )
-    parser.add_argument(
-        "--n-hidden-act", type=int, default=1, help="number of hidden layers for action"
-    )
-    parser.add_argument("--beta", type=float, default=1.0, help="beta for beta-vae")
-
-    parser = _add_custom_args(parser)
-
-    args = parser.parse_args()
-    return args
+    # Hparams for DPN
+    hparams: Hparams = Hparams()

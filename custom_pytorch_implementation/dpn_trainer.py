@@ -1,34 +1,41 @@
 """
 Main module to run from.
 """
+
 import time
 
+import hydra
 import pytorch_lightning as pl
+from hydra.core.config_store import ConfigStore
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from custom_pytorch_implementation.cli_args import parse_args
+from custom_pytorch_implementation.cli_args import DPNConfig, Hparams
+
+cs = ConfigStore.instance()
+cs.store(name="config", node=DPNConfig)
 
 
-def main(hparams):
+@hydra.main(config_name="config")
+def main(config: DPNConfig) -> None:
     """
     Main method.
 
-    :param hparams: Command line arguments
+    :param config: Command line arguments
     """
 
-    pl.seed_everything(hparams.seed)
+    pl.seed_everything(config.hparams.seed)
 
     logger = TensorBoardLogger(
-        save_dir=hparams.logdir, name=_experiment_dir_name(hparams)
+        save_dir=str(config.hparams.log_dir), name=_experiment_dir_name(config.hparams)
     )
 
-    trainer = pl.Trainer.from_argparse_args(hparams, logger=logger)
+    trainer = pl.Trainer(**config.pl_trainer, logger=logger)
 
     # TODO: Define model (i.e. DPNLightning class) to be passed to trainer.fit()
     # trainer.fit(model)
 
 
-def _experiment_dir_name(hparams) -> str:
+def _experiment_dir_name(hparams: Hparams) -> str:
     """
     Returns logging directory name for an experiment based on :param:`hparams`.
 
@@ -51,7 +58,7 @@ def _experiment_dir_name(hparams) -> str:
         + "_"
         + hparams.decay
         + "_"
-        + hparams.learn_lr
+        + str(hparams.learn_lr)
         + "_clip"
         + str(hparams.meta_gradient_clip_value)
         + "_n_hidden_"
@@ -59,7 +66,7 @@ def _experiment_dir_name(hparams) -> str:
         + "_latent_dim_"
         + str(hparams.obs_latent_dim)
         + "_dt_"
-        + str(hparams.dt)
+        + str(hparams.d_t)
     )
 
     if hparams.spatial_softmax:
@@ -87,4 +94,4 @@ def _experiment_dir_name(hparams) -> str:
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    main()
